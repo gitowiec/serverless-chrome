@@ -31,11 +31,11 @@ const defaultChromeFlags = [
 
   // '--trace-startup=*,disabled-by-default-memory-infra',
   //'--trace-startup=*',
-]
+];
 
 const defaultChromeConfig = {
   pageLoadTimeout: 1000 * 60, // Give the page max 60 seconds to load. time is money!
-}
+};
 
 export default {
   // log some extra stuff. It'll show up in your CloudWatch logs
