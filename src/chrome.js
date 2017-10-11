@@ -14,8 +14,8 @@ export async function isChromeRunning () {
   let running = false
 
   if (config.logging) {
-    log('\n$ ls /tmp\n', sp.execSync('ls -lhtra /tmp').toString())
-    log('\n$ ps lx\n', sp.execSync('ps lx').toString())
+    // log('\n$ ls /tmp\n', sp.execSync('ls -lhtra /tmp').toString())
+    // log('\n$ ps lx\n', sp.execSync('ps lx').toString())
 
     try {
       log('CDP List:', await Cdp.List())

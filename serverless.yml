@@ -15,15 +15,19 @@ custom:
 
 plugins:
   - serverless-webpack
+  - serverless-offline
 
 functions:
   run:
     description: Run headless Chromium
     memorySize: 1536
     timeout: 30
-    handler: handler.run
+    handler: src/handler.run
 
     events:
       - http:
           path: chrome
           method: get
+      - http:
+          path: chrome
+          method: post
