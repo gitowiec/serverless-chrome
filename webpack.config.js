@@ -5,12 +5,20 @@ const webpack = require('webpack')
 const chromeTarball = path.join(__dirname, 'chrome/chrome-headless-lambda-linux-x64.tar.gz')
 const webpackDir = path.join(__dirname, '.webpack/')
 
+console.log({chromeTarball});
+console.log({webpackDir});
+
 function ExtractTarballPlugin(archive, to) {
     return {
         apply: (compiler) => {
             compiler.plugin('emit', (compilation, callback) => {
+                console.log('ExtractTarballPlugin path archive', path.resolve(archive));
+                console.log('ExtractTarballPlugin path to', path.resolve(to));
                 decompress(path.resolve(archive), path.resolve(to))
-                    .then(() => callback())
+                    .then((files) => {
+                        console.log(files);
+                        return callback();
+                    })
                     .catch(error => console.error('Unable to extract archive ', archive, to, error.stack))
             })
         },
@@ -20,8 +28,8 @@ function ExtractTarballPlugin(archive, to) {
 module.exports = {
     // entry: './src/handler',
     entry: './src/handler',
-    devtool: '#inline-source-map',
-    debug: true,
+    // devtool: '#inline-source-map',
+    // debug: true,
     target: 'node',
     module: {
         loaders: [
@@ -31,7 +39,7 @@ module.exports = {
                 include: __dirname,
                 exclude: /node_modules/,
                 options: {
-                    plugins: [require('source-map-support')]
+                    // plugins: [require('source-map-support')]
                 }
             },
             {test: /\.json$/, loader: 'json-loader'},

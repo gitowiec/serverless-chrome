@@ -7,6 +7,8 @@ import 'source-map-support/register';
 export async function run(event, context, callback, handler = config.handler) {
 
     const request = event;
+    let handlerResult = {};
+    let handlerError = null;
 
     // log('request-request-request-request-request-request-request-request-request-request-');
     // log(request);
@@ -15,24 +17,40 @@ export async function run(event, context, callback, handler = config.handler) {
     // log('callback-callback-callback-callback-callback-callback-callback-callback-callback-');
     // log(callback);
 
-    let handlerResult = {}
-    let handlerError = null
+    if (request.httpMethod === 'GET') {
 
-    // try {
-    //   await spawnChrome()
-    // } catch (error) {
-    //   console.error('Error in spawning Chrome')
-    //   return callback(error)
-    // }
+        handlerResult = {
+            statusCode: 200,
+            body: `
+              <html>
+                <body>
+                  <p>Send zip file via POST RAW</p>
+                </body>
+              </html>
+            `,
+            headers: {
+                'Content-Type': 'text/html',
+            },
+        }
+    }
+    else if (request.httpMethod === 'POST') {
 
-    try {
-        handlerResult = await handler(request, context)
-    } catch (error) {
-        console.error('Error in handler:', error)
-        handlerError = error
+        try {
+            await spawnChrome()
+        } catch (error) {
+            console.error('Error in spawning Chrome')
+            return callback(error)
+        }
+
+        try {
+            handlerResult = await handler(request, context)
+        } catch (error) {
+            console.error('Error in handler:', error)
+            handlerError = error
+        }
     }
 
-    log('Handler result:', JSON.stringify(handlerResult, null, ' '))
+    // log('Handler result:', JSON.stringify(handlerResult, null, ' '))
 
     return callback(handlerError, handlerResult)
 }
