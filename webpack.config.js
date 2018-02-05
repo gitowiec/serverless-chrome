@@ -1,24 +1,18 @@
-const path = require('path')
-const decompress = require('decompress')
-const webpack = require('webpack')
+const path = require('path');
+const decompress = require('decompress');
+const webpack = require('webpack');
 
-const chromeTarball = path.join(__dirname, 'chrome/chrome-headless-lambda-linux-x64.tar.gz')
-const webpackDir = path.join(__dirname, '.webpack/')
+const chromeTarball = path.join(__dirname, 'chrome/chrome-headless-lambda-linux-x64.tar.gz');
+const webpackDir = path.join(__dirname, '.webpack/');
 
-console.log({chromeTarball});
-console.log({webpackDir});
 
 function ExtractTarballPlugin(archive, to) {
+    to = to + 'service/';
     return {
         apply: (compiler) => {
             compiler.plugin('emit', (compilation, callback) => {
-                console.log('ExtractTarballPlugin path archive', path.resolve(archive));
-                console.log('ExtractTarballPlugin path to', path.resolve(to));
                 decompress(path.resolve(archive), path.resolve(to))
-                    .then((files) => {
-                        console.log(files);
-                        return callback();
-                    })
+                    .then((files) => callback())
                     .catch(error => console.error('Unable to extract archive ', archive, to, error.stack))
             })
         },
@@ -28,8 +22,8 @@ function ExtractTarballPlugin(archive, to) {
 module.exports = {
     // entry: './src/handler',
     entry: './src/handler',
-    // devtool: '#inline-source-map',
-    // debug: true,
+    devtool: '#inline-source-map',
+    debug: true,
     target: 'node',
     module: {
         loaders: [

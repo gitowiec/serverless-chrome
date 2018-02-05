@@ -25,9 +25,9 @@ functions:
     handler: src/handler.run
 
     events:
-      - http:
-          path: chrome
-          method: get
+#      - http:
+#          path: chrome
+#          method: get
       - http:
           path: chrome
           method: post

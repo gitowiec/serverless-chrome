@@ -4,6 +4,7 @@ import {log, sleep} from '../utils';
 import fs from 'fs';
 import decompress from 'decompress';
 import path from 'path';
+import sp from 'child_process'
 
 const defaultPrintOptions = {
     landscape: false,
@@ -95,25 +96,34 @@ export async function printUrlToPdf(url, printOptions = {}) {
 
 export default (async function printFileToPdfHandler(request) {
     let {queryStringParameters: printParameters, body: binaryFileContents, resource: resourcePath} = request;
-
+    let statusCode = 200;
     const printOptions = makePrintOptions(printParameters || {});
     let pdf, url;
 
     log('Processing PDFification with print options', printOptions);
 
-
+    request.body && log('request.body[0..100]', request.body.substr(0,100));
+    log('typeof request.body', typeof request.body);
+    request.body && log('length request.body', request.body.length);
+    var body = request.body;
+    log('request', request);
+    // delete request.body;
     try {
-        url = await writeToDiskAndUnpackDocument(request.body);
+        url = await writeToDiskAndUnpackDocument(body);
     } catch (error) {
+        statusCode = 500;
         throw new Error('Unable to unpack document');
     }
 
-    console.log('urlurlurlurlurlurlurlurlurlurlurlurlurlurlurl', url);
+    log('url', url);
+
     const startTime = Date.now();
     // url = 'file:///home/marek/Downloads/local-page/index.html';
     try {
         pdf = await printUrlToPdf(url, printOptions);
+        log('pdf typeof', typeof pdf);
     } catch (error) {
+        statusCode = 500;
         console.error('Error printing pdf for', url, error);
         throw new Error('Unable to print pdf');
     }
@@ -122,15 +132,17 @@ export default (async function printFileToPdfHandler(request) {
 
     // TODO: probably better to write the pdf to S3,
     // but that's a bit more complicated for this example.
+    console.log('result Buffer.from fail?');
     let result = {
-        statusCode: 200,
+        statusCode: statusCode,
         // it's not possible to send binary via AWS API Gateway as it expects JSON response from Lambda
-        body: (Buffer.from(pdf, 'base64')).toString('binary'),
+        // body: (Buffer.from(pdf, 'base64')).toString('binary'),
         // body: (Buffer.from(pdf, 'base64')).toString(),
         // body: Buffer.from(pdf, 'base64'),
-        // body: pdf, //this works but curl command has to be piped into base64 -d > output.pdf
+        body: pdf, //this works but curl command has to be piped into base64 -d > output.pdf
         headers: {
             'Content-Type': 'application/pdf',
+            // 'Content-Type': 'application/octet-stream',
         },
     };
 
@@ -139,38 +151,60 @@ export default (async function printFileToPdfHandler(request) {
 })
 
 
-async function writeToDiskAndUnpackDocument(stringFileContents) {
+async function writeToDiskAndUnpackDocument(stringFileContents, encoding = 'base64') {
     const fileUrlPrefix = 'file://';
     const workspace = '/tmp';
     const archiveToPrintPath = workspace + '/document.zip';
     const documentToPrintDir = workspace + '/documentDir';
     return (new Promise((resolve, reject) => {
-        fs.writeFile(archiveToPrintPath, Buffer.from(stringFileContents, 'binary'), 'binary', (error) => {
+        //decode base64 payload and write it to disk as zip file
+        console.log('fs.writeFile Buffer.from fail?');
+        fs.writeFile(archiveToPrintPath, Buffer.from(stringFileContents, encoding), 'binary', (error) => {
             if (error) {
                 return reject(error);
             }
+            log(`\n$ ls -la ${archiveToPrintPath}\n`, sp.execSync(`ls -la ${archiveToPrintPath}`).toString())
+
             return resolve({archiveToPrintPath});
         });
     })).then((fileStats) => {
+        //make dir for decompression
         return new Promise((resolve, reject) => {
+            log(`\n$ ls -la ${workspace}\n`, sp.execSync(`ls -la ${workspace}`).toString())
+
             fs.mkdir(documentToPrintDir, 0o755, (error) => {
                 // if (error) {
                 //     return reject(error);
                 // }
+                log(`\n$ ls -la ${documentToPrintDir}\n`, sp.execSync(`ls -la ${documentToPrintDir}`).toString())
                 fileStats.documentToPrintDir = documentToPrintDir;
                 return resolve(fileStats);
             })
         });
     }).then((fileStats) => {
-
+        //decompress zip file
+        console.log('file to decompress', fileStats);
+        log(`\n$ ls -la ${workspace}\n`, sp.execSync(`ls -la ${workspace}`).toString())
         return decompress(fileStats.archiveToPrintPath, fileStats.documentToPrintDir);
-
     }).then(files => {
         for (let i = 0; i <= files.length; ++i) {
+            log('file path', files[i].path);
             if (files[i].path.endsWith('index.html')) {
                 return fileUrlPrefix + documentToPrintDir + '/' + files[i].path;
             }
+            // Promise.resolve()
         }
+    }).then((url) => {
+        //delete old zip file
+        console.log('url before then() chain ends', url);
+        return new Promise((resolve, reject) => {
+            fs.unlink(archiveToPrintPath, (error) => {
+                // if (error) {
+                //     return reject(error);
+                // }
+                return resolve(url);
+            });
+        });
     }).catch((reason) => {
         log('Catching writeToDiskAndUnpackDocument exception reason', reason)
     });
